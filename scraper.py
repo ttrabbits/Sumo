@@ -3,16 +3,20 @@
 
 import os
 import re
-import datetime
 import requests
 from pyquery import PyQuery as pq
-
+from argparse import ArgumentParser
 
 class Scraper:
     dom = None
+    data = []
 
     def __init__(self):
         pass
+
+
+    def getData(self):
+        return self.data
 
 
     def fetchUrl(self, url):
@@ -59,9 +63,8 @@ class Scraper:
 
             data = self._extractData(td_htmls)
             results += data
-            print(data)
-        print(results)
-        return
+
+        self.data = results
 
 
     def _extractData(self, td_htmls):
@@ -79,15 +82,23 @@ class Scraper:
 
 
     def _makeResultData(self, score, past_win, past_lose, banzuke, img_name):
+        result = self._getResultFromImgName(img_name)
+
+        # this win and lose parameters are after-game values.
+        # we want to use before-game values.
         win, lose = self._extractCurrentScore(score)
+        if result == 1:
+            win -= 1
+        elif result == -1:
+            lose -= 1
+
         vector = [
             win,
             lose,
             past_win,
             past_lose,
         ] + self._makeBanzukeVector(banzuke)
-        result = self._getResultFromImgName(img_name)
-        return (vector, result)
+        return (result, vector)
 
 
     def _makeBanzukeVector(self, banzuke):
@@ -125,6 +136,10 @@ class Scraper:
             return 0
 
 
+    def makeUrl(self, basho, day):
+        return 'http://sumodb.sumogames.de/Results.aspx?b=%s&d=%d&l=j' % (basho, day)
+
+
 def splitByRegExp(regexp, string):
     m = re.search(regexp, string.strip())
     if not m:
@@ -132,8 +147,36 @@ def splitByRegExp(regexp, string):
     return m.groups()
 
 
+
 if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument(
+        '-b', '--basho',
+        type = str,
+        dest = 'basho',
+        help = 'YYYYMM'
+    )
+    parser.add_argument(
+        '-d', '--day',
+        type = int,
+        dest = 'day',
+        help = 'D'
+    )
+    parser.add_argument(
+        '-f', '--file',
+        type = str,
+        dest = 'filename',
+        help = 'local HTML file'
+    )
+    args = parser.parse_args()
+    if not ((args.basho and args.day) or args.filename):
+        print('Usage: scrape_results.py -b <YYYYMM> -d <DAY> -f <FILENAME>')
+        quit()
+
     scraper = Scraper()
-    scraper.loadLocalHtml('testdata.html')
-    #scraper.fetchUrl('http://sumodb.sumogames.de/Results.aspx?b=201603&d=9&l=j')
+    if args.filename:
+        scraper.loadLocalHtml(args.filename)
+    else:
+        scraper.fetchUrl(scraper.makeUrl(args.basho, args.day))
     scraper.parseHtml()
+    print(scraper.getData())
