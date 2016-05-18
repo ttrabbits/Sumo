@@ -49,8 +49,13 @@ class Scraper:
             return
 
         tables = self.dom.find('.tk_table')
+        table = None
         for table in tables('table').items():
             break
+
+        if not table:
+            print('ERROR: no table')
+            return
 
         results = []
         for i, tr in enumerate(pq(table).find('tr').items()):
@@ -72,31 +77,33 @@ class Scraper:
         right_img = pq(td_htmls[4]).attr('src')
         left_banzuke, left_score = [elem.text() for elem in pq(td_htmls[1]).find('font').items()]
         right_banzuke, right_score = [elem.text() for elem in pq(td_htmls[3]).find('font').items()]
-        past_record = pq(td_htmls[2]).find('a').text()
+        total_record = pq(td_htmls[2]).find('a').text()
 
-        past_left_win, past_right_win = self._extractPastMatchRecord(past_record)
-        left_data = self._makeResultData(left_score, past_left_win, past_right_win, left_banzuke, left_img)
-        right_data = self._makeResultData(right_score, past_right_win, past_left_win, right_banzuke, right_img)
+        left_total_win, right_total_win = self._extractTotalRecord(total_record)
+        left_data = self._makeResultData(left_score, left_total_win, right_total_win, left_banzuke, left_img)
+        right_data = self._makeResultData(right_score, right_total_win, left_total_win, right_banzuke, right_img)
 
         return (left_data, right_data)
 
 
-    def _makeResultData(self, score, past_win, past_lose, banzuke, img_name):
+    def _makeResultData(self, score, total_win, total_lose, banzuke, img_name):
         result = self._getResultFromImgName(img_name)
 
-        # this win and lose parameters are after-game values.
+        # these win and lose parameters are after-game values.
         # we want to use before-game values.
         win, lose = self._extractCurrentScore(score)
         if result == 1:
             win -= 1
+            total_win -= 1
         elif result == -1:
             lose -= 1
+            total_lose -= 1
 
         vector = [
             win,
             lose,
-            past_win,
-            past_lose,
+            total_win,
+            total_lose,
         ] + self._makeBanzukeVector(banzuke)
         return (result, vector)
 
@@ -114,7 +121,7 @@ class Scraper:
             return [0, 0, 0, 0, 1]
 
 
-    def _extractPastMatchRecord(self, record):
+    def _extractTotalRecord(self, record):
         record = re.sub('\[.*?\]', '', record)
         record = re.sub('\(.*?\)', '', record)
         return [int(x) for x in record.split('-')]
