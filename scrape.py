@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     month_list = ('01', '03', '05', '07', '09', '11')
 
-    for year in range(2011, 2016):
+    for year in range(2011, 2017):
         for month in month_list:
             dataset = []
             basho = '%d%s' % (year, month)

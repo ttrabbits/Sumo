@@ -11,9 +11,8 @@ class Scraper:
     dom = None
     data = []
 
-    def __init__(self):
-        pass
-
+    def __init__(self, is_predict = False):
+        self.is_predict = is_predict
 
     def getData(self):
         return self.data
@@ -83,11 +82,17 @@ class Scraper:
         left_data = self._makeResultData(left_score, left_total_win, right_total_win, left_banzuke, left_img)
         right_data = self._makeResultData(right_score, right_total_win, left_total_win, right_banzuke, right_img)
 
+        left_data[1] += [right_data[1][0], right_data[1][1]] + self._makeBanzukeVector(right_banzuke)
+        right_data[1] += [left_data[1][0], left_data[1][1]] + self._makeBanzukeVector(left_banzuke)
+
         return (left_data, right_data)
 
 
     def _makeResultData(self, score, total_win, total_lose, banzuke, img_name):
-        result = self._getResultFromImgName(img_name)
+        if self.is_predict:
+            result = 0
+        else:
+            result = self._getResultFromImgName(img_name)
 
         # these win and lose parameters are after-game values.
         # we want to use before-game values.
@@ -105,7 +110,7 @@ class Scraper:
             total_win,
             total_lose,
         ] + self._makeBanzukeVector(banzuke)
-        return (result, vector)
+        return [result, vector]
 
 
     def _makeBanzukeVector(self, banzuke):
@@ -135,6 +140,9 @@ class Scraper:
 
 
     def _getResultFromImgName(self, img_name):
+        if not img_name:
+            print('img_name is none')
+            return 0
         if 'hoshi_kuro' in img_name:
             return -1
         elif 'hoshi_shiro' in img_name:
@@ -175,15 +183,27 @@ if __name__ == '__main__':
         dest = 'filename',
         help = 'local HTML file'
     )
+    parser.add_argument(
+        '-p', '--predict',
+        dest = 'is_predict',
+        default = False,
+        action = 'store_true',
+        help = 'predict flag'
+    )
     args = parser.parse_args()
     if not ((args.basho and args.day) or args.filename):
         print('Usage: scrape_results.py -b <YYYYMM> -d <DAY> -f <FILENAME>')
         quit()
 
-    scraper = Scraper()
+    scraper = Scraper(args.is_predict)
     if args.filename:
         scraper.loadLocalHtml(args.filename)
     else:
         scraper.fetchUrl(scraper.makeUrl(args.basho, args.day))
     scraper.parseHtml()
-    print(scraper.getData())
+
+    dataset = scraper.getData()
+    for data in dataset:
+        y = str(data[0])
+        x = [str(v) for v in data[1]]
+        print('%s,%s' % (y, ','.join(x)))
