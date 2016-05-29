@@ -7,22 +7,21 @@ import requests
 from pyquery import PyQuery as pq
 from argparse import ArgumentParser
 
+
 class Scraper:
     dom = None
     data = []
 
-    def __init__(self, is_predict = False):
+    def __init__(self, is_predict=False):
         self.is_predict = is_predict
 
     def getData(self):
         return self.data
 
-
     def fetchUrl(self, url):
         res = requests.get(url)
         res.encoding = res.apparent_encoding
         self.dom = pq(res.text)
-
 
     def loadLocalHtml(self, filename):
         if not os.path.exists(filename):
@@ -33,14 +32,12 @@ class Scraper:
         infile.close()
         self.dom = pq(html)
 
-
     def printHtml(self):
         if not self.dom:
             print('ERROR: not loaded')
             return
         p = self.dom('html')
         print(p.html())
-
 
     def parseHtml(self):
         if not self.dom:
@@ -70,7 +67,6 @@ class Scraper:
 
         self.data = results
 
-
     def _extractData(self, td_htmls):
         left_img = pq(td_htmls[0]).attr('src')
         right_img = pq(td_htmls[4]).attr('src')
@@ -79,14 +75,17 @@ class Scraper:
         total_record = pq(td_htmls[2]).find('a').text()
 
         left_total_win, right_total_win = self._extractTotalRecord(total_record)
-        left_data = self._makeResultData(left_score, left_total_win, right_total_win, left_banzuke, left_img)
-        right_data = self._makeResultData(right_score, right_total_win, left_total_win, right_banzuke, right_img)
+        left_data = self._makeResultData(
+            left_score, left_total_win, right_total_win, left_banzuke, left_img
+        )
+        right_data = self._makeResultData(
+            right_score, right_total_win, left_total_win, right_banzuke, right_img
+        )
 
-        left_data[1] += [right_data[1][0], right_data[1][1]] + self._makeBanzukeVector(right_banzuke)
-        right_data[1] += [left_data[1][0], left_data[1][1]] + self._makeBanzukeVector(left_banzuke)
+        left_data[1] += [right_data[1][0], right_data[1][1]] + self._makeBanzukeVec(right_banzuke)
+        right_data[1] += [left_data[1][0], left_data[1][1]] + self._makeBanzukeVec(left_banzuke)
 
         return (left_data, right_data)
-
 
     def _makeResultData(self, score, total_win, total_lose, banzuke, img_name):
         if self.is_predict:
@@ -112,8 +111,7 @@ class Scraper:
         ] + self._makeBanzukeVector(banzuke)
         return [result, vector]
 
-
-    def _makeBanzukeVector(self, banzuke):
+    def _makeBanzukeVec(self, banzuke):
         if '横綱' in banzuke:
             return [1, 0, 0, 0, 0]
         elif '大関' in banzuke:
@@ -125,19 +123,16 @@ class Scraper:
         else:
             return [0, 0, 0, 0, 1]
 
-
     def _extractTotalRecord(self, record):
         record = re.sub('\[.*?\]', '', record)
         record = re.sub('\(.*?\)', '', record)
         return [int(x) for x in record.split('-')]
-
 
     def _extractCurrentScore(self, score):
         scores = splitByRegExp('^([0-9]+)勝([0-9]+)敗', score)
         if not scores:
             return [0, 0]
         return [int(x) for x in scores]
-
 
     def _getResultFromImgName(self, img_name):
         if not img_name:
@@ -150,7 +145,6 @@ class Scraper:
         else:
             return 0
 
-
     def makeUrl(self, basho, day):
         return 'http://sumodb.sumogames.de/Results.aspx?b=%s&d=%d&l=j' % (basho, day)
 
@@ -162,33 +156,32 @@ def splitByRegExp(regexp, string):
     return m.groups()
 
 
-
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
         '-b', '--basho',
-        type = str,
-        dest = 'basho',
-        help = 'YYYYMM'
+        type=str,
+        dest='basho',
+        help='YYYYMM'
     )
     parser.add_argument(
         '-d', '--day',
-        type = int,
-        dest = 'day',
-        help = 'D'
+        type=int,
+        dest='day',
+        help='D'
     )
     parser.add_argument(
         '-f', '--file',
-        type = str,
-        dest = 'filename',
-        help = 'local HTML file'
+        type=str,
+        dest='filename',
+        help='local HTML file'
     )
     parser.add_argument(
         '-p', '--predict',
-        dest = 'is_predict',
-        default = False,
-        action = 'store_true',
-        help = 'predict flag'
+        dest='is_predict',
+        default=False,
+        action='store_true',
+        help='predict flag'
     )
     args = parser.parse_args()
     if not ((args.basho and args.day) or args.filename):
